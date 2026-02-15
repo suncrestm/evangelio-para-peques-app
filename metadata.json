@@ -1,0 +1,7 @@
+{
+  "name": "Evangelio para Peques",
+  "description": "Explicamos el Evangelio a los más pequeños de forma divertida, sencilla y llena de amor.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
