@@ -1,13 +1,11 @@
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 export default function App() {
   const [gospelInput, setGospelInput] = useState("");
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const [resultTitle, setResultTitle] = useState("");
   const [resultText, setResultText] = useState("");
-  const [resultImage, setResultImage] = useState<string | null>(null);
+  const [resultImage, setResultImage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const ages = [
     { label: "4–6", value: 5 },
@@ -15,262 +13,140 @@ export default function App() {
     { label: "10–12", value: 11 }
   ];
 
-  const generateContent = async (type: string) => {
-    if (!gospelInput || !selectedAge) {
-      alert("Pega el Evangelio y elige una edad.");
-      return;
-    }
+  const citation = useMemo(() => {
+    const match = gospelInput.match(/\b(Mt|Mc|Lc|Jn)\s*\d+\s*,\s*\d+(?:\s*-\s*\d+)?/i);
+    return match ? match[0] : "";
+  }, [gospelInput]);
+
+  const callAPI = async (modo: string) => {
+    if (!gospelInput || !selectedAge) return;
 
     setLoading(true);
-    setResultText("");
-    setResultImage(null);
 
-    try {
-      const response = await fetch("/api/evangelio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          evangelio: gospelInput,
-          edad: selectedAge
-        })
-      });
+    const res = await fetch("/api/evangelio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        evangelio: gospelInput,
+        edad: selectedAge,
+        modo
+      })
+    });
 
-      const data = await response.json();
+    const data = await res.json();
 
-      if (type === "cuento") {
-        setResultTitle("Cuento");
-        setResultText(data.cuento);
-      }
-
-      if (type === "analogia") {
-        setResultTitle("Analogía");
-        setResultText(data.analogia);
-      }
-
-      if (type === "oracion") {
-        setResultTitle("Oración");
-        setResultText(data.oracion);
-      }
-
-      if (type === "cuentoDibujo") {
-        setResultTitle("Cuento + Dibujo");
-        setResultText(data.cuento);
-        setResultImage(data.image);
-      }
-
-    } catch (error) {
-      console.error(error);
-      alert("Ocurrió un error.");
+    if (modo === "analogia") {
+      setResultText(data.analogia || "");
+    } else if (modo === "oracion") {
+      setResultText(data.oracion || "");
+    } else {
+      setResultText(data.meditacion || "");
     }
 
+    setResultImage(data.image ? `data:image/png;base64,${data.image}` : "");
     setLoading(false);
   };
 
-  const handleCopy = async () => {
-    if (!resultText) return;
+  const handlePrint = () => {
+    const win = window.open("", "_blank");
 
-    await navigator.clipboard.writeText(resultText);
-    alert("Contenido copiado.");
+    win!.document.write(`
+      <html>
+        <head>
+          <title>Meditación sobre el Evangelio</title>
+          <style>
+            @page { margin: 20mm; }
+            body { font-family: Arial; }
+            .logo { text-align:center; font-size:28px; font-weight:bold; color:#d19a00; }
+            .subtitle { text-align:center; font-size:14px; margin-bottom:20px; }
+            .cita { text-align:center; margin-bottom:20px; font-size:14px; color:#555; }
+            .contenido { white-space:pre-wrap; line-height:1.7; font-size:16px; }
+            img { width:100%; max-width:700px; display:block; margin:30px auto; }
+            .footer { text-align:center; margin-top:40px; font-size:12px; color:#777; }
+          </style>
+        </head>
+        <body>
+          <div class="logo">Catolitips</div>
+          <div class="subtitle">Material para papás y catequistas</div>
+          <h2 style="text-align:center;">Meditación sobre el Evangelio</h2>
+          <div class="cita">${citation}</div>
+          <div class="contenido">${resultText}</div>
+          ${resultImage ? `<img src="${resultImage}" />` : ""}
+          <div class="footer">catolitips.org</div>
+          <script>window.onload = () => window.print()</script>
+        </body>
+      </html>
+    `);
+
+    win!.document.close();
   };
 
-const handlePrint = () => {
-  if (!resultText) return;
-
-  const printWindow = window.open("", "_blank");
-
-  if (!printWindow) return;
-
-  const imageHTML = resultImage
-    ? `<img src="data:image/png;base64,${resultImage}" style="width:100%; margin-top:20px;" />`
-    : "";
-
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>Evangelio para Peques</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-            line-height: 1.6;
-          }
-          h1 {
-            text-align: center;
-            margin-bottom: 30px;
-          }
-          .cuento {
-            white-space: pre-wrap;
-            margin-bottom: 30px;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>${resultTitle}</h1>
-        <div class="cuento">${resultText}</div>
-        ${imageHTML}
-      </body>
-    </html>
-  `);
-
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-};
   return (
-    <div className="min-h-screen bg-[#f4efe6] py-10 px-4">
+    <div style={{ padding: 40, maxWidth: 800, margin: "auto" }}>
+      <h1 style={{ color: "#d19a00" }}>Evangelio para Peques</h1>
 
-      <div className="max-w-3xl mx-auto">
+      <textarea
+        value={gospelInput}
+        onChange={(e) => setGospelInput(e.target.value)}
+        placeholder="Pega el Evangelio aquí..."
+        style={{ width: "100%", height: 150, marginBottom: 20 }}
+      />
 
-        <h1 className="text-4xl font-bold text-center text-yellow-600 mb-2">
-          Evangelio para Peques
-        </h1>
-
-        <p className="text-center text-blue-600 mb-8">
-          Para papás y catequistas
-        </p>
-
-        {/* Input */}
-        <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6">
-
-          <label className="block font-semibold mb-2">
-            Pega el Evangelio aquí:
-          </label>
-
-          <textarea
-            value={gospelInput}
-            onChange={(e) => setGospelInput(e.target.value)}
-            className="w-full border border-yellow-400 rounded-xl p-4 mb-6 h-40"
-            placeholder="Pega el texto del Evangelio..."
-          />
-
-          <p className="font-semibold mb-2">
-            Edad (obligatoria):
-          </p>
-
-          <div className="flex gap-3 mb-6">
-            {ages.map((age) => (
-              <button
-                key={age.value}
-                onClick={() => setSelectedAge(age.value)}
-                className={`px-4 py-2 rounded-full border ${
-                  selectedAge === age.value
-                    ? "bg-black text-white"
-                    : "bg-white"
-                }`}
-              >
-                {age.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Buttons */}
-          <div className="grid grid-cols-2 gap-4">
-
-            <button
-              onClick={() => generateContent("cuento")}
-              className="bg-yellow-400 text-black font-semibold py-3 rounded-xl shadow"
-            >
-              Cuento
-            </button>
-
-            <button
-              onClick={() => generateContent("analogia")}
-              className="bg-blue-500 text-white font-semibold py-3 rounded-xl shadow"
-            >
-              Analogía
-            </button>
-
-            <button
-              onClick={() => generateContent("cuentoDibujo")}
-              className="bg-green-600 text-white font-semibold py-3 rounded-xl shadow"
-            >
-              Cuento + Dibujo
-            </button>
-
-            <button
-              onClick={() => generateContent("oracion")}
-              className="bg-pink-500 text-white font-semibold py-3 rounded-xl shadow"
-            >
-              Oración
-            </button>
-
-          </div>
-
-        </div>
-
-        {/* Resultado */}
-        {loading && (
-          <p className="text-center mt-6 font-semibold">
-            Generando...
-          </p>
-        )}
-
-        {resultText && (
-          <div className="print-area bg-white mt-8 rounded-3xl shadow-lg border border-yellow-200 p-6">
-
-            <h2 className="text-xl font-bold mb-4">
-              {resultTitle}
-            </h2>
-
-            <div className="whitespace-pre-wrap leading-relaxed mb-6">
-              {resultText}
-            </div>
-
-            {resultImage && (
-              <div className="mb-6">
-                <img
-                  src={`data:image/png;base64,${resultImage}`}
-                  alt="Dibujo"
-                  className="w-full rounded-xl"
-                />
-              </div>
-            )}
-
-            <div className="flex gap-4 justify-end">
-
-              <button
-                onClick={handleCopy}
-                className="bg-black text-white px-5 py-2 rounded-full"
-              >
-                Copiar contenido
-              </button>
-
-              {resultImage && (
-                <button
-                  onClick={handlePrint}
-                  className="bg-green-600 text-white px-5 py-2 rounded-full"
-                >
-                  Imprimir dibujo
-                </button>
-              )}
-
-            </div>
-
-          </div>
-        )}
-
+      <div style={{ marginBottom: 20 }}>
+        {ages.map(a => (
+          <button
+            key={a.value}
+            onClick={() => setSelectedAge(a.value)}
+            style={{
+              marginRight: 10,
+              padding: "8px 15px",
+              background: selectedAge === a.value ? "black" : "#eee",
+              color: selectedAge === a.value ? "white" : "black"
+            }}
+          >
+            {a.label}
+          </button>
+        ))}
       </div>
 
-      {/* CSS de impresión */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
+      <button onClick={() => callAPI("meditacion")} style={{ marginRight: 10 }}>
+        Meditación
+      </button>
 
-          .print-area, .print-area * {
-            visibility: visible;
-          }
+      <button onClick={() => callAPI("analogia")} style={{ marginRight: 10 }}>
+        Analogía
+      </button>
 
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}</style>
+      <button onClick={() => callAPI("dibujo")} style={{ marginRight: 10 }}>
+        Meditación + Dibujo
+      </button>
 
+      <button onClick={() => callAPI("oracion")}>
+        Oración
+      </button>
+
+      <button onClick={handlePrint} style={{ marginLeft: 20 }}>
+        Descargar PDF
+      </button>
+
+      {loading && <p>Generando...</p>}
+
+      {resultText && (
+        <div style={{ marginTop: 40 }}>
+          <h2>Meditación sobre el Evangelio</h2>
+          {citation && <p><strong>{citation}</strong></p>}
+          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+            {resultText}
+          </div>
+          {resultImage && (
+            <img
+              src={resultImage}
+              alt="Dibujo"
+              style={{ width: "100%", marginTop: 20 }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

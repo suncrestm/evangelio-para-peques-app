@@ -4,59 +4,26 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-function countWords(text) {
-  return text.trim().split(/\s+/).length;
-}
-
-async function generarContenido(evangelio, edad) {
-  const prompt = `
-Toma el siguiente evangelio:
-
-"${evangelio}"
-
-Adáptalo para un niño de ${edad} años.
-
-REGLAS OBLIGATORIAS:
-
-- El cuento debe tener mínimo 500 palabras.
-- Debe tener entre 5 y 8 párrafos.
-- Cada párrafo debe tener al menos 4 oraciones.
-- Incluye diálogos con comillas.
-- Describe emociones, ambiente y acciones.
-- No hagas resumen.
-- No hagas moraleja corta.
-- Debe parecer un cuento infantil completo.
-- Español claro y natural para México.
-- Sin emojis.
-
-Devuelve únicamente un JSON válido con esta estructura exacta:
-
-{
-  "cuento": "...",
-  "analogia": "...",
-  "historia": "...",
-  "oracion": "...",
-  "escena": "Describe brevemente una escena visual clara para un dibujo infantil en blanco y negro para colorear."
-}
+function reglasPorEdad(edad) {
+  if (edad <= 6) {
+    return `
+- Longitud entre 180 y 250 palabras.
+- 3 o 4 párrafos cortos.
+- Lenguaje muy simple.
 `;
+  }
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4.1",
-    messages: [
-      {
-        role: "system",
-        content: "Eres un catequista experto que explica el evangelio a niños."
-      },
-      {
-        role: "user",
-        content: prompt
-      }
-    ],
-    response_format: { type: "json_object" }
-  });
+  if (edad <= 9) {
+    return `
+- Longitud entre 300 y 400 palabras.
+- 4 a 6 párrafos.
+`;
+  }
 
-  const text = response.choices[0].message.content;
-  return JSON.parse(text);
+  return `
+- Longitud entre 450 y 600 palabras.
+- 5 a 8 párrafos.
+`;
 }
 
 export default async function handler(req, res) {
@@ -65,24 +32,59 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { evangelio, edad } = req.body;
+    const { evangelio, edad, modo } = req.body;
 
     if (!evangelio || !edad) {
       return res.status(400).json({ error: "Faltan datos" });
     }
 
-    // --------- GENERAR TEXTO (con validación de longitud) ---------
-    let parsed = await generarContenido(evangelio, edad);
+    const prompt = `
+Toma el siguiente evangelio:
 
-    // Si el cuento sale corto, intentamos una vez más
-    if (!parsed.cuento || countWords(parsed.cuento) < 450) {
-      parsed = await generarContenido(evangelio, edad);
-    }
+"${evangelio}"
 
-    // ---------- GENERAR IMAGEN ----------
+Adáptalo para un niño de ${edad} años.
+
+${reglasPorEdad(edad)}
+
+REGLAS GENERALES:
+- Español natural para México.
+- Incluye algunos diálogos.
+- Describe emociones.
+- No hagas resumen teológico.
+- Sin emojis.
+
+Devuelve SOLO JSON con esta estructura exacta:
+
+{
+  "meditacion": "...",
+  "analogia": "...",
+  "oracion": "...",
+  "escena": "Descripción breve para dibujo infantil en blanco y negro."
+}
+`;
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Eres un catequista experto que explica el evangelio a niños."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const parsed = JSON.parse(response.choices[0].message.content);
+
     let imageBase64 = null;
 
-    if (parsed.escena) {
+    // 🔥 SOLO GENERAR IMAGEN SI EL MODO ES DIBUJO
+    if (modo === "dibujo" && parsed.escena) {
       try {
         const image = await client.images.generate({
           model: "gpt-image-1",
@@ -91,8 +93,7 @@ Ilustración cristiana estilo libro para colorear.
 Solo líneas negras.
 Sin colores.
 Fondo blanco.
-Contornos gruesos y claros.
-Estilo catequético.
+Contornos gruesos.
 Escena: ${parsed.escena}
           `,
           size: "1024x1024"
@@ -101,14 +102,15 @@ Escena: ${parsed.escena}
         if (image?.data?.[0]?.b64_json) {
           imageBase64 = image.data[0].b64_json;
         }
-
       } catch (imgError) {
-        console.error("ERROR GENERANDO IMAGEN:", imgError);
+        console.error("Error generando imagen:", imgError);
       }
     }
 
     return res.status(200).json({
-      ...parsed,
+      meditacion: parsed.meditacion,
+      analogia: parsed.analogia,
+      oracion: parsed.oracion,
       image: imageBase64
     });
 
