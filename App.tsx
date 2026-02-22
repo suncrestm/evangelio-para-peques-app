@@ -59,11 +59,18 @@ export default function App() {
         setResultText(data.oracion);
       }
 
-      if (mode === "dibujo") {
-        setResultTitle("Cuento + Dibujo");
-        setResultText(data.historia);
-        setResultImage(`data:image/png;base64,${data.image}`);
-      }
+	  if (mode === "dibujo") {
+		console.log("Respuesta completa backend:", data);
+
+		setResultTitle("Cuento + Dibujo");
+		setResultText(data.historia);
+
+	  if (data.image) {
+		setResultImage(`data:image/png;base64,${data.image}`);
+      } else {
+		console.log("No llegó imagen desde backend");
+	  }
+}
 
     } catch (err) {
       console.error(err);
