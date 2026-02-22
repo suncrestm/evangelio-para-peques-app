@@ -7,62 +7,31 @@ export default function App() {
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [resultTitle, setResultTitle] = useState<string>("");
-  const [resultText, setResultText] = useState<string>("");
+  const [resultTitle, setResultTitle] = useState("");
+  const [resultText, setResultText] = useState("");
+  const [resultImage, setResultImage] = useState<string | null>(null);
 
-async function handleCopy() {
-  if (!resultText) return;
-
-  try {
-    await navigator.clipboard.writeText(
-		resultText + "\n\nRecurso gratuito de Catolitips.org"
-	);
-    alert("Contenido copiado al portapapeles.");
-  } catch (err) {
-    console.error("Error al copiar:", err);
-    alert("No se pudo copiar automáticamente. Copia manualmente.");
-  }
-}
   const ages = [
     { label: "4–6", value: 5 },
     { label: "7–9", value: 8 },
     { label: "10–12", value: 11 },
   ];
 
-  const modeButtons: { mode: Mode; label: string; className: string }[] = [
-  { mode: "cuento", label: "Cuento", className: "bg-yellow-400 text-black" },
-    { mode: "analogia", label: "Analogía", className: "bg-blue-500 text-white" },
-    { mode: "dibujo", label: "Cuento + Dibujo", className: "bg-green-500 text-white" },
-    { mode: "oracion", label: "Oración", className: "bg-pink-500 text-white" },
-  ];
-
-  function pickTextByMode(apiJson: any, mode: Mode): string {
-    if (!apiJson || typeof apiJson !== "object") return "";
-
-    if (mode === "cuento") return apiJson.cuento ?? "";
-    if (mode === "analogia") return apiJson.analogia ?? "";
-    if (mode === "dibujo") return apiJson.historia ?? ""; // “historia” = cuento más largo/para dibujo
-    if (mode === "oracion") return apiJson.oracion ?? "";
-
-    return "";
-  }
-
   async function handleGenerate(mode: Mode) {
-    // Validación 1: evangelio
     if (!gospelInput.trim()) {
       alert("Pega el Evangelio primero.");
       return;
     }
 
-    // Validación 2: edad obligatoria
     if (!selectedAge) {
-      alert("Selecciona una edad antes de generar el contenido.");
+      alert("Selecciona una edad.");
       return;
     }
 
     setLoading(true);
-    setResultTitle("");
     setResultText("");
+    setResultTitle("");
+    setResultImage(null);
 
     try {
       const res = await fetch("/api/evangelio", {
@@ -71,72 +40,104 @@ async function handleCopy() {
         body: JSON.stringify({ evangelio: gospelInput, edad: selectedAge }),
       });
 
-      if (!res.ok) {
-        const maybe = await res.json().catch(() => null);
-        console.error("API ERROR:", maybe);
-        throw new Error("Error en API");
-      }
-
       const data = await res.json();
 
-      const text = pickTextByMode(data, mode);
-      if (!text) {
-        console.error("Respuesta API sin texto esperado:", data);
-        throw new Error("Respuesta incompleta");
+      if (!res.ok) throw new Error("Error API");
+
+      if (mode === "cuento") {
+        setResultTitle("Cuento");
+        setResultText(data.cuento);
       }
 
-      const title =
-        mode === "cuento"
-          ? "Cuento"
-          : mode === "analogia"
-          ? "Analogía"
-          : mode === "dibujo"
-          ? "Cuento + Dibujo"
-          : "Oración";
+      if (mode === "analogia") {
+        setResultTitle("Analogía");
+        setResultText(data.analogia);
+      }
 
-      setResultTitle(title);
-      setResultText(text);
+      if (mode === "oracion") {
+        setResultTitle("Oración");
+        setResultText(data.oracion);
+      }
+
+      if (mode === "dibujo") {
+        setResultTitle("Cuento + Dibujo");
+        setResultText(data.historia);
+        setResultImage(`data:image/png;base64,${data.image}`);
+      }
+
     } catch (err) {
-      console.error("ERROR:", err);
-      setResultTitle("Error");
-      setResultText("¡Oh no! Hubo un problema en el cielo. Vuelve a intentar.");
-    } finally {
-      setLoading(false);
+      console.error(err);
+      alert("Hubo un error.");
     }
+
+    setLoading(false);
+  }
+
+  async function handleCopy() {
+    if (!resultText) return;
+
+    await navigator.clipboard.writeText(
+      resultText + "\n\nRecurso gratuito de Catolitips.org"
+    );
+
+    alert("Contenido copiado.");
+  }
+
+  function handlePrint() {
+    if (!resultImage) return;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    win.document.write(`
+      <html>
+        <body style="text-align:center; font-family:sans-serif; padding:40px;">
+          <h2>${resultTitle}</h2>
+          <p style="white-space:pre-wrap;">${resultText}</p>
+          <img src="${resultImage}" style="max-width:100%; margin-top:20px;" />
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+
+    win.document.close();
   }
 
   return (
     <div className="min-h-screen bg-[#fbf6e8] px-4 py-10">
       <div className="max-w-3xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-5xl font-extrabold text-[#e0a100]">Evangelio para Peques</h1>
-          <p className="mt-2 text-blue-600 font-medium">Herramienta para explicar el Evangelio a niños</p>
-        </header>
 
-        <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6">
-          <label className="block font-semibold text-gray-700 mb-2">
-            Pega el Evangelio aquí:
-          </label>
+        <h1 className="text-5xl font-extrabold text-[#e0a100] text-center">
+          Evangelio para Peques
+        </h1>
+        <p className="text-center text-blue-600 mt-2">
+          Para papás y catequistas
+        </p>
+
+        <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6 mt-8">
 
           <textarea
             value={gospelInput}
             onChange={(e) => setGospelInput(e.target.value)}
-            className="w-full h-40 p-4 rounded-2xl border border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            className="w-full h-40 p-4 rounded-2xl border border-yellow-300"
             placeholder="Pega el texto del Evangelio..."
           />
 
-          {/* Edad obligatoria */}
-          <div className="mt-5">
-            <p className="font-semibold text-gray-700 mb-2">Edad (obligatoria):</p>
-            <div className="flex gap-3 flex-wrap">
+          <div className="mt-4">
+            <p className="font-semibold">Edad (obligatoria):</p>
+            <div className="flex gap-3 mt-2">
               {ages.map((a) => (
                 <button
                   key={a.value}
                   onClick={() => setSelectedAge(a.value)}
-                  className={`px-4 py-2 rounded-full border transition ${
+                  className={`px-4 py-2 rounded-full border ${
                     selectedAge === a.value
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
+                      ? "bg-black text-white"
+                      : "bg-white text-gray-700"
                   }`}
                   type="button"
                 >
@@ -146,48 +147,78 @@ async function handleCopy() {
             </div>
           </div>
 
-          {/* Botones */}
           <div className="grid grid-cols-2 gap-4 mt-6">
-            {modeButtons.map((b) => (
-              <button
-                key={b.mode}
-                onClick={() => handleGenerate(b.mode)}
-                disabled={loading}
-                className={`${b.className} rounded-2xl py-4 font-bold shadow-md hover:opacity-95 disabled:opacity-50`}
-                type="button"
-              >
-                {b.label}
-              </button>
-            ))}
+            <button
+              onClick={() => handleGenerate("cuento")}
+              className="bg-yellow-400 text-black rounded-2xl py-4 font-bold"
+            >
+              Cuento
+            </button>
+
+            <button
+              onClick={() => handleGenerate("analogia")}
+              className="bg-blue-500 text-white rounded-2xl py-4 font-bold"
+            >
+              Analogía
+            </button>
+
+            <button
+              onClick={() => handleGenerate("dibujo")}
+              className="bg-green-500 text-white rounded-2xl py-4 font-bold"
+            >
+              Cuento + Dibujo
+            </button>
+
+            <button
+              onClick={() => handleGenerate("oracion")}
+              className="bg-pink-500 text-white rounded-2xl py-4 font-bold"
+            >
+              Oración
+            </button>
           </div>
         </div>
 
-        {/* Resultado */}
-        <div className="mt-8 bg-white rounded-3xl shadow-lg border border-yellow-200 p-6">
-          {loading ? (
-            <p className="text-center font-semibold text-gray-600">Generando…</p>
-          ) : resultText ? (
-            <>
-              <h2 className="text-xl font-bold text-gray-800 mb-3">{resultTitle}</h2>
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {resultText}
-              </div>
-			  <div className="mt-6 text-right">
-				<button
-					onClick={handleCopy}
-				className="px-5 py-2 bg-gray-900 text-white rounded-full hover:bg-black transition"
-				type="button"
-				>
-    Copiar contenido
-  </button>
-</div>
-            </>
-          ) : (
-            <p className="text-gray-600 font-medium">
-				Pega el Evangelio, elige una edad y presiona un botón.
-			</p>
-          )}
-        </div>
+        {(resultText || loading) && (
+          <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6 mt-8">
+
+            {loading ? (
+              <p>Generando...</p>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold mb-3">{resultTitle}</h2>
+                <div className="whitespace-pre-wrap">{resultText}</div>
+
+                {resultImage && (
+                  <div className="mt-6 text-center">
+                    <img
+                      src={resultImage}
+                      alt="Dibujo"
+                      className="max-w-full"
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-4 mt-6">
+                  <button
+                    onClick={handleCopy}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-full"
+                  >
+                    Copiar contenido
+                  </button>
+
+                  {resultImage && (
+                    <button
+                      onClick={handlePrint}
+                      className="px-4 py-2 bg-green-600 text-white rounded-full"
+                    >
+                      Imprimir lámina
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
