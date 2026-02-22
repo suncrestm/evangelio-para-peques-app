@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Section, GospelMode } from './types';
 import { PRAYERS } from './constants';
-import { askTheAngel, generateColoringImage } from './services/gemini';
+import { askTheAngel } from './services/gemini';
 
-// 🔹 NUEVA FUNCIÓN QUE LLAMA A TU API
 async function generarEvangelio(evangelio: string, edad: number) {
   const response = await fetch("/api/evangelio", {
     method: "POST",
@@ -20,43 +19,12 @@ async function generarEvangelio(evangelio: string, edad: number) {
   return await response.json();
 }
 
-const Navbar = ({ current, setSection }: { current: Section, setSection: (s: Section) => void }) => (
-  <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-yellow-100 px-4 py-3 flex justify-around items-center z-50 md:top-0 md:bottom-auto md:border-t-0 md:border-b-4">
-    {[
-      { id: Section.HOME, icon: '🏠', label: 'Inicio' },
-      { id: Section.PRAYERS, icon: '🙏', label: 'Rezar' },
-      { id: Section.CHAT, icon: '👼', label: 'Angelito' }
-    ].map(item => (
-      <button
-        key={item.id}
-        onClick={() => setSection(item.id)}
-        className={`flex flex-col items-center px-4 py-2 rounded-[1.5rem] transition-all duration-300 ${
-          current === item.id ? 'bg-yellow-400 text-white scale-110 shadow-lg' : 'text-gray-400'
-        }`}
-      >
-        <span className="text-2xl">{item.icon}</span>
-        <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-      </button>
-    ))}
-  </nav>
-);
-
-const Card = ({ children, className = "" }: { children?: React.ReactNode, className?: string }) => (
-  <div className={`bg-white rounded-[2.5rem] p-6 kids-shadow border-2 border-gray-50 ${className}`}>
-    {children}
-  </div>
-);
-
 const App: React.FC = () => {
-  const [section, setSection] = useState<Section>(Section.HOME);
   const [gospelInput, setGospelInput] = useState('');
   const [gospelResult, setGospelResult] = useState('');
   const [loading, setLoading] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'angel', text: string }[]>([]);
-  const [activePrayer, setActivePrayer] = useState<string | null>(null);
 
-  const handleGenerateGospel = async (mode: GospelMode) => {
+  const handleGenerate = async (mode: GospelMode) => {
     if (!gospelInput.trim()) {
       alert("Primero pega el Evangelio.");
       return;
@@ -73,97 +41,63 @@ const App: React.FC = () => {
       if (mode === 'dibujo') setGospelResult(data.historia);
       if (mode === 'oracion') setGospelResult(data.oracion);
 
-    } catch (error) {
-      setGospelResult("¡Oh no! Hubo un problema en el cielo. Vuelve a intentar.");
+    } catch {
+      setGospelResult("Hubo un problema. Intenta nuevamente.");
     }
 
     setLoading(false);
   };
 
-  const handleChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const userMsg = chatInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatInput('');
-    setLoading(true);
-
-    const reply = await askTheAngel(userMsg);
-    setChatMessages(prev => [...prev, { role: 'angel', text: reply }]);
-    setLoading(false);
-  };
-
   return (
-    <div className="min-h-screen pb-28 md:pt-24">
-      <header className="p-8 text-center">
-        <h1 className="text-4xl font-black text-yellow-500 tracking-tight">
-          Evangelio para Peques
-        </h1>
-        <p className="text-blue-400 font-black mt-1 text-sm uppercase tracking-widest">
-          ¡La Biblia es una aventura!
-        </p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-white py-16 px-6">
+      <div className="max-w-3xl mx-auto space-y-10">
 
-      <main className="max-w-3xl mx-auto px-4 space-y-8">
-        {section === Section.HOME && (
-          <div className="space-y-6">
-            <Card>
-              <textarea
-                value={gospelInput}
-                onChange={(e) => setGospelInput(e.target.value)}
-                placeholder="Pega el Evangelio aquí..."
-                className="w-full h-32 p-5 rounded-[2rem] bg-blue-50 border-2 border-blue-200 focus:outline-none"
-              />
+        <div className="text-center space-y-3">
+          <h1 className="text-5xl font-extrabold text-yellow-500">
+            Evangelio para Peques
+          </h1>
+          <p className="text-blue-500 font-semibold">
+            La Biblia explicada para niños
+          </p>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                {[
-                  { mode: 'cuento', label: 'Cuento' },
-                  { mode: 'analogia', label: 'Analogía' },
-                  { mode: 'dibujo', label: 'Cuento + Dibujo' },
-                  { mode: 'oracion', label: 'Oración' }
-                ].map((btn) => (
-                  <button 
-                    key={btn.mode}
-                    onClick={() => handleGenerateGospel(btn.mode as GospelMode)}
-                    className="bg-yellow-400 p-4 rounded-2xl font-black"
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </Card>
+        <div className="bg-white rounded-3xl shadow-xl p-8 space-y-6 border border-yellow-100">
+          <textarea
+            value={gospelInput}
+            onChange={(e) => setGospelInput(e.target.value)}
+            placeholder="Pega aquí el Evangelio..."
+            className="w-full h-40 p-5 rounded-2xl border-2 border-yellow-200 focus:border-yellow-400 focus:outline-none resize-none"
+          />
 
-            {loading && <p className="text-center">Generando...</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => handleGenerate('cuento')} className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-3 rounded-xl transition">
+              Cuento
+            </button>
+            <button onClick={() => handleGenerate('analogia')} className="bg-blue-400 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
+              Analogía
+            </button>
+            <button onClick={() => handleGenerate('dibujo')} className="bg-green-400 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition">
+              Cuento + Dibujo
+            </button>
+            <button onClick={() => handleGenerate('oracion')} className="bg-pink-400 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition">
+              Oración
+            </button>
+          </div>
+        </div>
 
-            {gospelResult && (
-              <Card>
-                <div className="whitespace-pre-wrap">
-                  {gospelResult}
-                </div>
-              </Card>
-            )}
+        {loading && (
+          <div className="text-center text-yellow-600 font-bold">
+            Generando contenido...
           </div>
         )}
 
-        {section === Section.PRAYERS && (
-          <div>
-            {PRAYERS.map(p => (
-              <div key={p.id}>{p.title}</div>
-            ))}
+        {gospelResult && (
+          <div className="bg-white rounded-3xl shadow-lg p-8 border border-yellow-100 whitespace-pre-wrap leading-relaxed text-gray-700">
+            {gospelResult}
           </div>
         )}
 
-        {section === Section.CHAT && (
-          <div>
-            {chatMessages.map((msg, idx) => (
-              <div key={idx}>{msg.text}</div>
-            ))}
-          </div>
-        )}
-      </main>
-
-      <Navbar current={section} setSection={setSection} />
+      </div>
     </div>
   );
 };
