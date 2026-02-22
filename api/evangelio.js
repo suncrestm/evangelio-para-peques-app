@@ -16,24 +16,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Faltan datos" });
     }
 
-    const prompt = `
+const prompt = `
 Toma el siguiente evangelio:
 
 "${evangelio}"
 
 Adáptalo para un niño de ${edad} años.
 
-Reglas IMPORTANTES:
-- El cuento debe tener mínimo 5 párrafos completos.
+REGLAS OBLIGATORIAS:
+
+- El cuento debe tener mínimo 400 palabras.
+- Debe tener entre 5 y 8 párrafos.
 - Cada párrafo debe tener al menos 4 oraciones.
-- Incluye diálogos.
-- Describe emociones.
-- No hagas un resumen corto.
-- Que parezca una pequeña historia infantil.
-- Usa lenguaje sencillo pero narrativo.
-- Incluye diálogos si es posible.
-- Que no sea un resumen corto.
-- Hazlo dinámico y fácil de entender.
+- Incluye diálogos con comillas.
+- Describe emociones, ambiente y acciones.
+- No hagas resumen.
+- No hagas moraleja corta.
+- Debe parecer un cuento infantil completo, no explicación breve.
 
 Devuelve únicamente un JSON válido con esta estructura exacta:
 
