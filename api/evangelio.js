@@ -24,7 +24,12 @@ Toma el siguiente evangelio:
 Adáptalo para un niño de ${edad} años.
 
 Reglas IMPORTANTES:
-- El cuento debe tener entre 3 y 6 párrafos.
+- El cuento debe tener mínimo 5 párrafos completos.
+- Cada párrafo debe tener al menos 4 oraciones.
+- Incluye diálogos.
+- Describe emociones.
+- No hagas un resumen corto.
+- Que parezca una pequeña historia infantil.
 - Usa lenguaje sencillo pero narrativo.
 - Incluye diálogos si es posible.
 - Que no sea un resumen corto.
