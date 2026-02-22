@@ -1,12 +1,10 @@
-import React, { useState } from "react";
-
-type Mode = "cuento" | "analogia" | "dibujo" | "oracion";
+import { useState } from "react";
 
 export default function App() {
   const [gospelInput, setGospelInput] = useState("");
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
-
   const [loading, setLoading] = useState(false);
+
   const [resultTitle, setResultTitle] = useState("");
   const [resultText, setResultText] = useState("");
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -14,219 +12,265 @@ export default function App() {
   const ages = [
     { label: "4–6", value: 5 },
     { label: "7–9", value: 8 },
-    { label: "10–12", value: 11 },
+    { label: "10–12", value: 11 }
   ];
 
-  async function handleGenerate(mode: Mode) {
-    if (!gospelInput.trim()) {
-      alert("Pega el Evangelio primero.");
-      return;
-    }
-
-    if (!selectedAge) {
-      alert("Selecciona una edad.");
+  const generateContent = async (type: string) => {
+    if (!gospelInput || !selectedAge) {
+      alert("Pega el Evangelio y elige una edad.");
       return;
     }
 
     setLoading(true);
     setResultText("");
-    setResultTitle("");
     setResultImage(null);
 
     try {
-      const res = await fetch("/api/evangelio", {
+      const response = await fetch("/api/evangelio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ evangelio: gospelInput, edad: selectedAge }),
+        body: JSON.stringify({
+          evangelio: gospelInput,
+          edad: selectedAge
+        })
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) throw new Error("Error API");
-
-      if (mode === "cuento") {
+      if (type === "cuento") {
         setResultTitle("Cuento");
         setResultText(data.cuento);
       }
 
-      if (mode === "analogia") {
+      if (type === "analogia") {
         setResultTitle("Analogía");
         setResultText(data.analogia);
       }
 
-      if (mode === "oracion") {
+      if (type === "oracion") {
         setResultTitle("Oración");
         setResultText(data.oracion);
       }
 
-	  if (mode === "dibujo") {
-		console.log("Respuesta completa backend:", data);
+      if (type === "cuentoDibujo") {
+        setResultTitle("Cuento + Dibujo");
+        setResultText(data.cuento);
+        setResultImage(data.image);
+      }
 
-		setResultTitle("Cuento + Dibujo");
-		setResultText(data.historia);
-
-	  if (data.image) {
-		setResultImage(`data:image/png;base64,${data.image}`);
-      } else {
-		console.log("No llegó imagen desde backend");
-	  }
-}
-
-    } catch (err) {
-      console.error(err);
-      alert("Hubo un error.");
+    } catch (error) {
+      console.error(error);
+      alert("Ocurrió un error.");
     }
 
     setLoading(false);
-  }
+  };
 
-  async function handleCopy() {
+  const handleCopy = async () => {
     if (!resultText) return;
 
-    await navigator.clipboard.writeText(
-      resultText + "\n\nRecurso gratuito de Catolitips.org"
-    );
-
+    await navigator.clipboard.writeText(resultText);
     alert("Contenido copiado.");
-  }
+  };
 
-  function handlePrint() {
-    if (!resultImage) return;
+const handlePrint = () => {
+  if (!resultText) return;
 
-    const win = window.open("", "_blank");
-    if (!win) return;
+  const printWindow = window.open("", "_blank");
 
-    win.document.write(`
-      <html>
-        <body style="text-align:center; font-family:sans-serif; padding:40px;">
-          <h2>${resultTitle}</h2>
-          <p style="white-space:pre-wrap;">${resultText}</p>
-          <img src="${resultImage}" style="max-width:100%; margin-top:20px;" />
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
-        </body>
-      </html>
-    `);
+  if (!printWindow) return;
 
-    win.document.close();
-  }
+  const imageHTML = resultImage
+    ? `<img src="data:image/png;base64,${resultImage}" style="width:100%; margin-top:20px;" />`
+    : "";
 
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Evangelio para Peques</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            line-height: 1.6;
+          }
+          h1 {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .cuento {
+            white-space: pre-wrap;
+            margin-bottom: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${resultTitle}</h1>
+        <div class="cuento">${resultText}</div>
+        ${imageHTML}
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+};
   return (
-    <div className="min-h-screen bg-[#fbf6e8] px-4 py-10">
+    <div className="min-h-screen bg-[#f4efe6] py-10 px-4">
+
       <div className="max-w-3xl mx-auto">
 
-        <h1 className="text-5xl font-extrabold text-[#e0a100] text-center">
+        <h1 className="text-4xl font-bold text-center text-yellow-600 mb-2">
           Evangelio para Peques
         </h1>
-        <p className="text-center text-blue-600 mt-2">
+
+        <p className="text-center text-blue-600 mb-8">
           Para papás y catequistas
         </p>
 
-        <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6 mt-8">
+        {/* Input */}
+        <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6">
+
+          <label className="block font-semibold mb-2">
+            Pega el Evangelio aquí:
+          </label>
 
           <textarea
             value={gospelInput}
             onChange={(e) => setGospelInput(e.target.value)}
-            className="w-full h-40 p-4 rounded-2xl border border-yellow-300"
+            className="w-full border border-yellow-400 rounded-xl p-4 mb-6 h-40"
             placeholder="Pega el texto del Evangelio..."
           />
 
-          <div className="mt-4">
-            <p className="font-semibold">Edad (obligatoria):</p>
-            <div className="flex gap-3 mt-2">
-              {ages.map((a) => (
-                <button
-                  key={a.value}
-                  onClick={() => setSelectedAge(a.value)}
-                  className={`px-4 py-2 rounded-full border ${
-                    selectedAge === a.value
-                      ? "bg-black text-white"
-                      : "bg-white text-gray-700"
-                  }`}
-                  type="button"
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
+          <p className="font-semibold mb-2">
+            Edad (obligatoria):
+          </p>
+
+          <div className="flex gap-3 mb-6">
+            {ages.map((age) => (
+              <button
+                key={age.value}
+                onClick={() => setSelectedAge(age.value)}
+                className={`px-4 py-2 rounded-full border ${
+                  selectedAge === age.value
+                    ? "bg-black text-white"
+                    : "bg-white"
+                }`}
+              >
+                {age.label}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          {/* Buttons */}
+          <div className="grid grid-cols-2 gap-4">
+
             <button
-              onClick={() => handleGenerate("cuento")}
-              className="bg-yellow-400 text-black rounded-2xl py-4 font-bold"
+              onClick={() => generateContent("cuento")}
+              className="bg-yellow-400 text-black font-semibold py-3 rounded-xl shadow"
             >
               Cuento
             </button>
 
             <button
-              onClick={() => handleGenerate("analogia")}
-              className="bg-blue-500 text-white rounded-2xl py-4 font-bold"
+              onClick={() => generateContent("analogia")}
+              className="bg-blue-500 text-white font-semibold py-3 rounded-xl shadow"
             >
               Analogía
             </button>
 
             <button
-              onClick={() => handleGenerate("dibujo")}
-              className="bg-green-500 text-white rounded-2xl py-4 font-bold"
+              onClick={() => generateContent("cuentoDibujo")}
+              className="bg-green-600 text-white font-semibold py-3 rounded-xl shadow"
             >
               Cuento + Dibujo
             </button>
 
             <button
-              onClick={() => handleGenerate("oracion")}
-              className="bg-pink-500 text-white rounded-2xl py-4 font-bold"
+              onClick={() => generateContent("oracion")}
+              className="bg-pink-500 text-white font-semibold py-3 rounded-xl shadow"
             >
               Oración
             </button>
+
           </div>
+
         </div>
 
-        {(resultText || loading) && (
-          <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6 mt-8">
+        {/* Resultado */}
+        {loading && (
+          <p className="text-center mt-6 font-semibold">
+            Generando...
+          </p>
+        )}
 
-            {loading ? (
-              <p>Generando...</p>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold mb-3">{resultTitle}</h2>
-                <div className="whitespace-pre-wrap">{resultText}</div>
+        {resultText && (
+          <div className="print-area bg-white mt-8 rounded-3xl shadow-lg border border-yellow-200 p-6">
 
-                {resultImage && (
-                  <div className="mt-6 text-center">
-                    <img
-                      src={resultImage}
-                      alt="Dibujo"
-                      className="max-w-full"
-                    />
-                  </div>
-                )}
+            <h2 className="text-xl font-bold mb-4">
+              {resultTitle}
+            </h2>
 
-                <div className="flex justify-end gap-4 mt-6">
-                  <button
-                    onClick={handleCopy}
-                    className="px-4 py-2 bg-gray-900 text-white rounded-full"
-                  >
-                    Copiar contenido
-                  </button>
+            <div className="whitespace-pre-wrap leading-relaxed mb-6">
+              {resultText}
+            </div>
 
-                  {resultImage && (
-                    <button
-                      onClick={handlePrint}
-                      className="px-4 py-2 bg-green-600 text-white rounded-full"
-                    >
-                      Imprimir lámina
-                    </button>
-                  )}
-                </div>
-              </>
+            {resultImage && (
+              <div className="mb-6">
+                <img
+                  src={`data:image/png;base64,${resultImage}`}
+                  alt="Dibujo"
+                  className="w-full rounded-xl"
+                />
+              </div>
             )}
+
+            <div className="flex gap-4 justify-end">
+
+              <button
+                onClick={handleCopy}
+                className="bg-black text-white px-5 py-2 rounded-full"
+              >
+                Copiar contenido
+              </button>
+
+              {resultImage && (
+                <button
+                  onClick={handlePrint}
+                  className="bg-green-600 text-white px-5 py-2 rounded-full"
+                >
+                  Imprimir dibujo
+                </button>
+              )}
+
+            </div>
+
           </div>
         )}
+
       </div>
+
+      {/* CSS de impresión */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+
+          .print-area, .print-area * {
+            visibility: visible;
+          }
+
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
+
     </div>
   );
 }
