@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
 
+type Modo = "meditacion" | "analogia" | "dibujo" | "oracion";
+
 export default function App() {
   const [gospelInput, setGospelInput] = useState("");
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
@@ -18,7 +20,7 @@ export default function App() {
     return match ? match[0] : "";
   }, [gospelInput]);
 
-  const callAPI = async (modo: string) => {
+  const callAPI = async (modo: Modo) => {
     if (!gospelInput || !selectedAge) return;
 
     setLoading(true);
@@ -35,13 +37,9 @@ export default function App() {
 
     const data = await res.json();
 
-    if (modo === "analogia") {
-      setResultText(data.analogia || "");
-    } else if (modo === "oracion") {
-      setResultText(data.oracion || "");
-    } else {
-      setResultText(data.meditacion || "");
-    }
+    if (modo === "analogia") setResultText(data.analogia || "");
+    else if (modo === "oracion") setResultText(data.oracion || "");
+    else setResultText(data.meditacion || "");
 
     setResultImage(data.image ? `data:image/png;base64,${data.image}` : "");
     setLoading(false);
@@ -82,71 +80,113 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: 40, maxWidth: 800, margin: "auto" }}>
-      <h1 style={{ color: "#d19a00" }}>Evangelio para Peques</h1>
+    <div className="min-h-screen bg-[#fbf3de] py-10 px-4">
+      <div className="max-w-3xl mx-auto">
 
-      <textarea
-        value={gospelInput}
-        onChange={(e) => setGospelInput(e.target.value)}
-        placeholder="Pega el Evangelio aquí..."
-        style={{ width: "100%", height: 150, marginBottom: 20 }}
-      />
+        <h1 className="text-4xl font-bold text-center text-[#d19a00]">
+          Evangelio para Peques
+        </h1>
+        <p className="text-center text-blue-600 mb-8">
+          Para papás y catequistas
+        </p>
 
-      <div style={{ marginBottom: 20 }}>
-        {ages.map(a => (
-          <button
-            key={a.value}
-            onClick={() => setSelectedAge(a.value)}
-            style={{
-              marginRight: 10,
-              padding: "8px 15px",
-              background: selectedAge === a.value ? "black" : "#eee",
-              color: selectedAge === a.value ? "white" : "black"
-            }}
-          >
-            {a.label}
-          </button>
-        ))}
-      </div>
+        <div className="bg-white p-6 rounded-3xl shadow border border-yellow-200">
+          <label className="font-semibold block mb-2">
+            Pega el Evangelio aquí:
+          </label>
 
-      <button onClick={() => callAPI("meditacion")} style={{ marginRight: 10 }}>
-        Meditación
-      </button>
+          <textarea
+            value={gospelInput}
+            onChange={(e) => setGospelInput(e.target.value)}
+            className="w-full h-40 p-4 rounded-2xl border border-yellow-300 focus:outline-none"
+          />
 
-      <button onClick={() => callAPI("analogia")} style={{ marginRight: 10 }}>
-        Analogía
-      </button>
-
-      <button onClick={() => callAPI("dibujo")} style={{ marginRight: 10 }}>
-        Meditación + Dibujo
-      </button>
-
-      <button onClick={() => callAPI("oracion")}>
-        Oración
-      </button>
-
-      <button onClick={handlePrint} style={{ marginLeft: 20 }}>
-        Descargar PDF
-      </button>
-
-      {loading && <p>Generando...</p>}
-
-      {resultText && (
-        <div style={{ marginTop: 40 }}>
-          <h2>Meditación sobre el Evangelio</h2>
-          {citation && <p><strong>{citation}</strong></p>}
-          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-            {resultText}
+          <div className="mt-4">
+            <div className="font-semibold mb-2">Edad (obligatoria):</div>
+            <div className="flex gap-3">
+              {ages.map(a => (
+                <button
+                  key={a.value}
+                  onClick={() => setSelectedAge(a.value)}
+                  className={
+                    "px-4 py-2 rounded-full border " +
+                    (selectedAge === a.value
+                      ? "bg-black text-white"
+                      : "bg-white")
+                  }
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {resultImage && (
-            <img
-              src={resultImage}
-              alt="Dibujo"
-              style={{ width: "100%", marginTop: 20 }}
-            />
-          )}
+
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <button
+              onClick={() => callAPI("meditacion")}
+              className="bg-yellow-400 py-3 rounded-2xl font-bold"
+            >
+              Meditación
+            </button>
+
+            <button
+              onClick={() => callAPI("analogia")}
+              className="bg-blue-500 text-white py-3 rounded-2xl font-bold"
+            >
+              Analogía
+            </button>
+
+            <button
+              onClick={() => callAPI("dibujo")}
+              className="bg-green-500 text-white py-3 rounded-2xl font-bold"
+            >
+              Meditación + Dibujo
+            </button>
+
+            <button
+              onClick={() => callAPI("oracion")}
+              className="bg-pink-500 text-white py-3 rounded-2xl font-bold"
+            >
+              Oración
+            </button>
+          </div>
         </div>
-      )}
+
+        {loading && (
+          <p className="text-center mt-6 font-semibold">Generando...</p>
+        )}
+
+        {resultText && (
+          <div className="bg-white p-6 mt-8 rounded-3xl shadow border border-yellow-200">
+            <h2 className="text-xl font-bold mb-2">
+              Meditación sobre el Evangelio
+            </h2>
+
+            {citation && (
+              <p className="text-gray-500 mb-4">{citation}</p>
+            )}
+
+            <div className="whitespace-pre-wrap leading-relaxed">
+              {resultText}
+            </div>
+
+            {resultImage && (
+              <img
+                src={resultImage}
+                alt="Dibujo"
+                className="mt-6 mx-auto max-w-full"
+              />
+            )}
+
+            <button
+              onClick={handlePrint}
+              className="mt-6 bg-black text-white px-6 py-2 rounded-full"
+            >
+              Descargar PDF
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
