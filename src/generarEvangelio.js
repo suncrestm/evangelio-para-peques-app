@@ -26,24 +26,25 @@ Reglas:
 - Fidelidad total al texto bíblico
 - Lenguaje adecuado a la edad
 - No inventar doctrinas
-- No agregar moralejas modernas
-- Mantener enfoque cristiano claro
-- No usar markdown
-- No usar bloques de código
 - No agregar texto fuera del JSON
 `;
 
-  const response = await client.responses.create({
-    model: "gpt-4.1-mini",
-    input: prompt,
-    text: {
-      format: {
-        type: "json_object"
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: "Eres un catequista experto que explica el evangelio a niños."
+      },
+      {
+        role: "user",
+        content: prompt
       }
-    }
+    ],
+    response_format: { type: "json_object" }
   });
 
-  const text = response.output[0].content[0].text;
+  const text = response.choices[0].message.content;
 
   return JSON.parse(text);
 }
