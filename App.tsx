@@ -10,6 +10,19 @@ export default function App() {
   const [resultTitle, setResultTitle] = useState<string>("");
   const [resultText, setResultText] = useState<string>("");
 
+async function handleCopy() {
+  if (!resultText) return;
+
+  try {
+    await navigator.clipboard.writeText(
+		resultText + "\n\nRecurso gratuito de Catolitips.org"
+	);
+    alert("Contenido copiado al portapapeles.");
+  } catch (err) {
+    console.error("Error al copiar:", err);
+    alert("No se pudo copiar automáticamente. Copia manualmente.");
+  }
+}
   const ages = [
     { label: "4–6", value: 5 },
     { label: "7–9", value: 8 },
@@ -17,7 +30,7 @@ export default function App() {
   ];
 
   const modeButtons: { mode: Mode; label: string; className: string }[] = [
-    { mode: "cuento", label: "Cuento", className: "bg-yellow-400 text-white" },
+  { mode: "cuento", label: "Cuento", className: "bg-yellow-400 text-black" },
     { mode: "analogia", label: "Analogía", className: "bg-blue-500 text-white" },
     { mode: "dibujo", label: "Cuento + Dibujo", className: "bg-green-500 text-white" },
     { mode: "oracion", label: "Oración", className: "bg-pink-500 text-white" },
@@ -97,7 +110,7 @@ export default function App() {
       <div className="max-w-3xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-5xl font-extrabold text-[#e0a100]">Evangelio para Peques</h1>
-          <p className="mt-2 text-blue-600 font-medium">Para papás y catequistas</p>
+          <p className="mt-2 text-blue-600 font-medium">Herramienta para explicar el Evangelio a niños</p>
         </header>
 
         <div className="bg-white rounded-3xl shadow-lg border border-yellow-200 p-6">
@@ -159,11 +172,20 @@ export default function App() {
               <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
                 {resultText}
               </div>
+			  <div className="mt-6 text-right">
+				<button
+					onClick={handleCopy}
+				className="px-5 py-2 bg-gray-900 text-white rounded-full hover:bg-black transition"
+				type="button"
+				>
+    Copiar contenido
+  </button>
+</div>
             </>
           ) : (
-            <p className="text-gray-500">
-              Elige una edad, pega el Evangelio y presiona un botón.
-            </p>
+            <p className="text-gray-600 font-medium">
+				Pega el Evangelio, elige una edad y presiona un botón.
+			</p>
           )}
         </div>
       </div>
