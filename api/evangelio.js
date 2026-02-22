@@ -23,13 +23,21 @@ Toma el siguiente evangelio:
 
 Adáptalo para un niño de ${edad} años.
 
+Reglas IMPORTANTES:
+- El cuento debe tener entre 3 y 6 párrafos.
+- Usa lenguaje sencillo pero narrativo.
+- Incluye diálogos si es posible.
+- Que no sea un resumen corto.
+- Hazlo dinámico y fácil de entender.
+
 Devuelve únicamente un JSON válido con esta estructura exacta:
 
 {
   "cuento": "...",
   "analogia": "...",
   "historia": "...",
-  "oracion": "..."
+  "oracion": "...",
+  "escena": "Describe brevemente una escena visual clara para un dibujo infantil en blanco y negro para colorear."
 }
 `;
 
@@ -49,8 +57,39 @@ Devuelve únicamente un JSON válido con esta estructura exacta:
     });
 
     const text = response.choices[0].message.content;
+    const parsed = JSON.parse(text);
 
-    return res.status(200).json(JSON.parse(text));
+    // ---------- GENERAR IMAGEN ----------
+    let imageBase64 = null;
+
+    if (parsed.escena) {
+      try {
+        const image = await client.images.generate({
+          model: "gpt-image-1",
+          prompt: `
+Ilustración cristiana estilo libro para colorear.
+Solo líneas negras.
+Sin colores.
+Fondo blanco.
+Contornos gruesos y claros.
+Escena: ${parsed.escena}
+          `,
+          size: "1024x1024"
+        });
+
+        if (image?.data?.[0]?.b64_json) {
+          imageBase64 = image.data[0].b64_json;
+        }
+
+      } catch (imgError) {
+        console.error("ERROR GENERANDO IMAGEN:", imgError);
+      }
+    }
+
+    return res.status(200).json({
+      ...parsed,
+      image: imageBase64
+    });
 
   } catch (error) {
     console.error("ERROR REAL:", error);
