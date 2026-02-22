@@ -1,5 +1,4 @@
-export async function generarEvangelio({ evangelio, edad }) {
-
+export async function generarEvangelio({ evangelio, edad }: { evangelio: string; edad: number }) {
   const response = await fetch("/api/evangelio", {
     method: "POST",
     headers: {
